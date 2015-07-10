@@ -19,23 +19,27 @@ func init() {
 	rand.Seed(s)
 }
 
-var indexTemplate *template.Template
-
 func main() {
 	listen := flag.String("listen", ":8090", "host:port to listen on")
 	assets := flag.String("assets", "assets", "path to assets directory")
 	templates := flag.String("templates", "templates", "path to template directory")
 	flag.Parse()
 
-	var err error
-	indexTemplate, err = template.ParseFiles(*templates + "/index.html")
+	indexTemplate, err := template.ParseFiles(*templates + "/index.html")
 	if err != nil {
 		log.Fatalf("unable to parse index template: %s", err)
 	}
 
 	http.Handle("/assets/", http.StripPrefix("/assets/",
 		http.FileServer(http.Dir(*assets))))
-	http.HandleFunc("/", home)
+
+	http.HandleFunc("/plaintext", func(w http.ResponseWriter, r *http.Request) {
+		w.Write([]byte(insult()))
+	})
+
+	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+		indexTemplate.Execute(w, insult())
+	})
 
 	log.Fatal(http.ListenAndServe(*listen, nil))
 }
@@ -46,11 +50,6 @@ func pick(segment []string) string {
 
 func insult() string {
 	return fmt.Sprintf("Thou %s %s %s!", pick(columnA), pick(columnB), pick(columnC))
-}
-
-func home(w http.ResponseWriter, r *http.Request) {
-	s := insult()
-	indexTemplate.Execute(w, s)
 }
 
 // Word lists from: http://web.mit.edu/dryfoo/Funny-pages/shakespeare-insult-kit.html
